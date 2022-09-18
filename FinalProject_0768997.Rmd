@@ -1,0 +1,266 @@
+---
+title: "DAB501 - Final Project"
+author: "Neha Dewangan(0768997), Section-001"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+Load the libraries 
+
+```{r}
+library(tidyverse)
+library(here)
+library(gridExtra)
+library(scales)
+```
+
+
+Load the data set
+
+```{r}
+vg = read.csv("C:/Users/nehad/OneDrive/Desktop/DAB501/501-FinalPrioject_0768997/data/Video_Games_Sales.csv")
+```
+
+
+Data Preparation - Cleaning and Transformation
+
+```{r}
+vg_removed_null <- vg[complete.cases(vg),]
+
+vg2 <- vg_removed_null %>% filter(User_Score != "tbd") %>% transform(User_Score = as.numeric(User_Score))
+
+vg_clean <- vg2 %>% filter(Year_of_Release != "N/A", Rating != "") %>% 
+  transform( Year_of_Release = as.numeric(Year_of_Release)) %>% 
+  filter(Year_of_Release >= 2011)
+```
+
+
+Review the transformed data set
+
+```{r}
+vg_clean
+```
+
+
+Variables of the transformed data set
+
+```{r}
+glimpse(vg_clean)
+```
+
+
+### Analysis - 
+**1. Explain the trend of global sales with respect to critic Score.**
+
+```{r}
+cor(vg_clean$Critic_Count, vg_clean$Global_Sales)
+```
+
+```{r}
+vg_clean %>% ggplot(aes(x= Critic_Score, y=Global_Sales)) + 
+  geom_point(color="red") + geom_smooth() + 
+  labs(title = "Variation of Global sales with respect to Critic Score", x="Critic Score", y="Global Sales")
+```
+
+The coefficient of correlation between Critic score and Global Sales is 0.36 which is positive that means the relationship between the two variables in **linear and positive** and the slope is less than 45 degree as the value is not closer to 1. The same thing can be observed by the plot above. the value is increasing very slowly at some extend and then increased with greater slope and then again increased with higher slope. Also, more values can be observed with higher critic score in scatter plot. Greater the critic score value, higher the Global sales. Hence the relationship is linear and positive.  
+Here dependent variable (Y) is  Global_Sales and independent variable (x) is Critic_Score. Critic score value can be used to predict the value of Global sales usign a linear regression model. 
+
+
+
+**2. Share the Statistical Analysis on Sales of video games for North America, Europe and Global region. Draw conclusions by comparing it.**
+
+```{r}
+summary(vg_clean$Global_Sales)
+summary(vg_clean$NA_Sales)
+summary(vg_clean$EU_Sales)
+
+IQR(vg_clean$Global_Sales)
+IQR(vg_clean$NA_Sales)
+IQR(vg_clean$EU_Sales)
+```
+
+
+```{r}
+p1 <- vg_clean %>% ggplot(aes(x=Global_Sales)) + 
+  geom_histogram(bins = 30, fill="purple", alpha=0.4) + 
+  geom_vline(xintercept = mean(vg_clean$Global_Sales), colour = 'red', size = 1) + 
+  geom_vline(xintercept = median(vg_clean$Global_Sales), colour = 'black', size = 1)  + 
+   labs(title = "Distribution of Video Game Sales Globally")
+
+p2 <- vg_clean %>% ggplot(aes(x=NA_Sales)) + 
+  geom_histogram(bins = 30, fill="green", alpha=0.4) +  
+  geom_vline(xintercept = mean(vg_clean$NA_Sales), colour = 'red', size = 1) + 
+  geom_vline(xintercept = median(vg_clean$NA_Sales), colour = 'black', size = 1) + 
+   labs(title = "Distribution of Video Game Sales in North America")
+
+p3 <- vg_clean %>% ggplot(aes(x=EU_Sales)) + 
+  geom_histogram(bins = 30, fill="orange", alpha=0.4) + 
+  geom_vline(xintercept = mean(vg_clean$EU_Sales), colour = 'red', size = 1) +
+  geom_vline(xintercept = median(vg_clean$EU_Sales), colour = 'black', size = 1) + 
+  labs(title = "Distribution of Video Game Sales in Europe")
+
+grid.arrange(p1, p2, p3) 
+```
+
+From the above summary and plots, we can see that the video games sales data is **Rightly Skewed** as it's most of the data are concentrated at one side and less data on right side. We can also conclude this by observing the mean and median by the summary(Median is higher than mean). These highly spread data on right hand side are outliers but these plays considerable roles in the revenue generation by video game platforms so I am not removing these outliers and including these in my analysis. It is **Unimodal** as it has only one peak. Hence, It's I will calculate it's measures with Intequartile range and median as center.
+**The range of global revenue is 0.73 million, for NA and Europe it is 0.34 and 0.26 million respectively. For rest of the world it is 0.13 million.We can see that North america and Europe plays biggest roles in revenue generation.** We can see the range and median also from the histograms.
+
+
+**3. Analysis  the differences in in User count and User score, Critic count and Critic score.**
+
+```{r}
+g1 <- vg_clean %>% ggplot(aes(x=User_Count)) + 
+  geom_boxplot(fill="skyblue") + 
+  labs(title = "Distribution of User Count")
+g2 <- vg_clean %>% ggplot(aes(x=User_Score)) + 
+  geom_boxplot(fill="pink") + 
+  labs(title = "Distribution of User Score")
+
+g3 <- vg_clean %>% ggplot(aes(x=Critic_Count)) + 
+  geom_boxplot(fill="orchid1") + 
+  labs(title = "Distribution of Critic Count")
+g4<- vg_clean %>% ggplot(aes(x=Critic_Score)) + 
+  geom_boxplot(fill="tan1") + 
+  labs(title = "Distribution of critic Score")
+
+grid.arrange(g1, g2, g3, g4)
+```
+
+By seeing above graph, the difference between number of subscribers who gave scores to the games is far less than that of professionals. but the number of scores by professional is way higher than user scores. The difference can be clearly seen by the range, and medians of the plots. the range and medians of Critic Count and Critic Score are higher than the User count and User score.
+
+
+
+**4. Which category(Genre), generates the highest global revenue?**
+
+```{r}
+vg_clean %>% group_by(Genre) %>% 
+  summarise(avg_sales_by_genre = mean(Global_Sales)) %>% 
+  ggplot(aes(x=Genre, y=avg_sales_by_genre)) + 
+  geom_col(color="black", fill="skyblue") + coord_flip() + 
+  labs(title = "Comparison of Average Global Sales of Video Games by Genre", x="Average Global sales", y="Genre")
+```
+
+The chart compares average global sales of video games in different genre categories. IT is clearly visible that games in shooter categories collected highest average revenue, meaning this type of games can be choice of most of the people. The value is very less for Puzzles and adventurous games, meaning people might have less interest in puzzle solving games.
+
+
+**5. Describe the distribution of video games sales in different platform.**
+
+```{r}
+vg_clean %>% group_by(Platform) %>% 
+  summarise(avg_sales_by_pltfrm = mean(Global_Sales)) %>% 
+  ggplot(aes(x=Platform, y=avg_sales_by_pltfrm)) + 
+  geom_col(color="black", fill="pink") + 
+  labs(title = "Comparison of Average Global Sales of Video Games by Platfomrs", x="Platform", y="Average Global Sales")
+```
+
+The above graph shows distribution of average global sales of video games in different Platforms. The distribution is quite varying among all the platforms and no usual observation or similar patterns can be observed here. 
+
+
+**6. Explain the variation of global sales from the year 2011 to 2016.**
+
+```{r}
+vg_clean %>%  group_by(Year_of_Release) %>% 
+  summarise(avg_sales_by_year = mean(Global_Sales)) %>% 
+  ggplot(aes(x=Year_of_Release, y=avg_sales_by_year)) + 
+  geom_line(linetype = "dashed",color="red") +geom_point(color="darkred", size=2) + 
+  labs(title = "Variation of Average Global Revenue of Video Games from 2011 to 2016", x="Year", y="Average Global Sales")
+```
+
+The chart gives information about trend of the average global sales of video games from 2011 to 2016. The average sales increases from 2011 to 2013, reaches 1 million, and then sharply decreases till 2016.
+
+
+
+**7. What are the global revenue generated in different ratings categories.**
+
+```{r}
+vg_clean %>% group_by(Rating) %>% 
+  summarise(avg_sales_by_rating = mean(Global_Sales)) %>% 
+  ggplot(aes(x=Rating, y=avg_sales_by_rating)) + 
+  geom_col(fill="brown") + 
+  labs(title = "Comparision of Average Global Sales in different Rating Categories", x="Rating", y="Average Global Sales")
+```
+
+The plot shows average sales of video games in different rating categories. The highest average sales video games are rated as M. There is only one video game with rating RP.
+
+
+**8. Compare the total revenue generated by video game industry in different regions through out the yeas.**
+
+```{r}
+vg_clean %>% group_by(Year_of_Release) %>% 
+  select(Year_of_Release, NA_Sales, EU_Sales, JP_Sales, Other_Sales, Global_Sales) %>% 
+  summarise(sum_g = sum(Global_Sales), sum_na = sum(NA_Sales), sum_eu = sum(EU_Sales), sum_jp = sum(JP_Sales), sum_other = sum(Other_Sales)) %>%  
+  arrange(Year_of_Release) %>% 
+  ggplot(aes(x=Year_of_Release)) + 
+   geom_line(aes(y=sum_g), linetype = "solid",color="black") +
+  geom_line(aes(y=sum_na), linetype = "solid",color="red") + 
+  geom_line(aes(y=sum_eu), linetype = "solid",color="blue") + 
+  geom_line(aes(y=sum_jp), linetype = "twodash",color="blue") +
+  geom_line(aes(y=sum_other), linetype = "twodash",color="red") + 
+  theme_bw() + 
+  labs(title = "Total Sales of Video Games in different Region from  2011 to 2016", x="Year", y="Total Sales")
+
+```
+
+The above line chart compares the variation of total revenue generated by the whole world, North America, Europe, Japan and rest of the world from 2011 to 2016. For all the regions, Video Game sales decreases from 2011 to 2016. **The black line represents global sales. The sales of North America(solid red line) was greater than Europe(solid blue line), Japan(dashed red line) and other regions(dashed blue line) till the year 2016.** But in mid of 2015 the sales of Europe slightly increased than that of Europe. North America, Europe and Japan are the most revenue generated countries in the world. 
+
+
+
+**9. Name the top 5 video games with highest total sales and compare the values.**
+
+```{r}
+vg_clean %>% group_by(Name) %>% 
+  summarise(gsales_by_game = sum(Global_Sales)) %>%  
+  arrange(desc(gsales_by_game)) %>% 
+  slice(1:5) %>% 
+  mutate(video_games = fct_reorder(Name, gsales_by_game)) %>% 
+  ggplot(aes(y=video_games, x=gsales_by_game, fill=video_games)) +
+  geom_col(stat="identity", alpha=.8, width=0.9) + 
+  theme_bw() + 
+  labs(title = "Top 5 Video Games with Highest Total Revenue", x="Total Sales", y="Name of the Video Game")
+```
+
+The graph shows the top 5 Video Games companies which generates highest total sales for the given year. The first name here is - Grand theft Auto v with revenue around 56 millions. The difference ij revenue of Call of Duty series is almost equal with a little variation. The 5th game is The Elder Scroll V Skyrim with 19 million revenue.
+
+
+**10. Compare the total sales generated by top 5 development companies.**
+
+```{r}
+vg_clean %>% group_by(Developer) %>% 
+  summarise(gsales_by_dev = sum(Global_Sales)) %>%  
+  arrange(desc(gsales_by_dev)) %>% 
+  slice(1:5) %>% 
+  mutate(name = fct_reorder(Developer, desc(gsales_by_dev))) %>% 
+  ggplot(aes(x=name, y=gsales_by_dev)) +  
+  geom_col(stat="identity", fill="#f68060", alpha=.6, width=.4) + 
+  theme_bw() + 
+  labs(title = "Top 5 Video Game Development Company with Highest Total Revenue", x="Development Company", y="Total Sales")
+```
+
+The graph shows the top 5 development companies with highest total revenue. The topmost company is Nintendo with total sales around 75 millions, followed by Ubisoft, Rockstar, EA Sports and Ubisoft Montreal.
+
+
+
+**11. Compare the total revenue of top 5 publishers.**
+
+```{r}
+vg_clean %>% group_by(Publisher) %>% 
+  summarise(gsales_by_pbl = sum(Global_Sales)) %>%  
+  arrange(desc(gsales_by_pbl)) %>% 
+  slice(1:5) %>% 
+  mutate(name = fct_reorder(Publisher, gsales_by_pbl)) %>% 
+  ggplot(aes(x=name, y=gsales_by_pbl)) + 
+  geom_segment( aes(xend=name, yend=0)) +
+    geom_point( size=4, color="red") +
+    coord_flip() +
+    theme_bw() + 
+  labs(title = "Top 5  Publishers of Video Game with Highest Total revenue", x="Publisher", y="Total Sales") 
+```
+
+The above plot compares the top 5 publishers of the video games which generates highest total revenue in the given year. It can be clearly seen that Electronics Arts is at the top  with 225 millions revenue approximately, followed by Activision, Nintendo, Ubisoft and Take-Two Interactive with total revenues between 175 and 130 millions.
+
